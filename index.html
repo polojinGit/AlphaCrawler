@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>알파문구 상품 견적 리스트</title>
+    <title>알파문구 공동구매 리스트</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- SheetJS (Excel Export) 라이브러리 확인 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
@@ -19,21 +18,33 @@
             animation: spin 1s linear infinite;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        @keyframes highlight { 0% { background-color: #ffedd5; } 100% { background-color: transparent; } }
-        .highlight-row { animation: highlight 1.5s ease-out; }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen p-4 md:p-8">
 
-    <div class="max-w-6xl mx-auto">
+    <div class="max-w-7xl mx-auto">
         <header class="mb-8 text-center md:text-left">
             <h1 class="text-3xl font-bold text-gray-800 mb-2">
-                <span class="text-orange-600">α</span> 알파문구 상품 수집기 (할인상품 대응)
+                <span class="text-orange-600">α</span> 알파문구 공동구매 수집기
             </h1>
-            <p class="text-gray-600">알파문구 상품 링크를 입력하세요. 할인 상품의 가격과 코드를 정확히 가져옵니다.</p>
+            <p class="text-gray-600">신청자 이름과 옵션을 입력하고 링크를 붙여넣으세요.</p>
         </header>
 
+        <!-- Input Section -->
         <div class="bg-white rounded-xl shadow-md p-6 mb-8 border-t-4 border-orange-500">
+            <!-- 1. 신청자 및 옵션 입력 -->
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-4 mb-4">
+                <div class="md:col-span-3">
+                    <label for="applicantInput" class="block text-sm font-medium text-gray-700 mb-1">신청자명 <span class="text-red-500 text-xs">(필수)</span></label>
+                    <input type="text" id="applicantInput" placeholder="이름 입력" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none transition bg-yellow-50">
+                </div>
+                <div class="md:col-span-9">
+                    <label for="optionInput" class="block text-sm font-medium text-gray-700 mb-1">옵션 내용 <span class="text-gray-400 text-xs">(선택)</span></label>
+                    <input type="text" id="optionInput" placeholder="예: 검정 2개, 파랑 1개 / 사이즈 L 등" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none transition">
+                </div>
+            </div>
+
+            <!-- 2. URL 입력 및 버튼 -->
             <div class="flex flex-col md:flex-row gap-4 items-end">
                 <div class="flex-1 w-full">
                     <label for="urlInput" class="block text-sm font-medium text-gray-700 mb-1">상품 URL</label>
@@ -42,50 +53,56 @@
                         class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none transition"
                         onkeypress="handleEnter(event)">
                 </div>
-                <button onclick="fetchProductInfo()" id="addBtn" class="bg-orange-600 hover:bg-orange-700 text-white font-medium px-6 py-2 rounded-lg transition flex items-center gap-2 h-10 min-w-[120px] justify-center">
+                <button onclick="fetchProductInfo()" id="addBtn" class="bg-orange-600 hover:bg-orange-700 text-white font-medium px-6 py-2 rounded-lg transition flex items-center gap-2 h-10 min-w-[120px] justify-center whitespace-nowrap">
                     <span id="btnText">상품 추가</span>
                     <div id="btnSpinner" class="loading-spinner hidden"></div>
                 </button>
             </div>
-            <p class="text-xs text-gray-400 mt-2">* 데이터 로딩이 느릴 경우 2~3초 정도 기다려주세요. 프록시 서버를 경유합니다.</p>
+            <p class="text-xs text-gray-400 mt-2">* 신청자명을 입력하지 않으면 추가되지 않습니다. 같은 상품이라도 신청자가 다르면 별도로 추가됩니다.</p>
         </div>
 
+        <!-- Action Bar -->
         <div class="flex justify-between items-center mb-4">
-            <h2 class="text-xl font-semibold text-gray-800">상품 목록 <span id="countBadge" class="bg-gray-200 text-gray-700 text-sm px-2 py-0.5 rounded-full ml-2">0</span></h2>
+            <h2 class="text-xl font-semibold text-gray-800">신청 목록 <span id="countBadge" class="bg-gray-200 text-gray-700 text-sm px-2 py-0.5 rounded-full ml-2">0</span></h2>
             <div class="flex gap-2">
-                <button onclick="clearList()" class="px-4 py-2 text-red-500 hover:bg-red-50 rounded-lg transition text-sm">전체 삭제</button>
+                <button onclick="clearList()" class="px-4 py-2 text-red-500 hover:bg-red-50 rounded-lg transition text-sm border border-transparent hover:border-red-100">전체 삭제</button>
                 <button onclick="exportToExcel()" class="bg-green-600 hover:bg-green-700 text-white font-medium px-4 py-2 rounded-lg transition shadow-sm flex items-center gap-2">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
-                    엑셀 내보내기
+                    엑셀 다운로드
                 </button>
             </div>
         </div>
 
+        <!-- Table -->
         <div class="bg-white rounded-xl shadow-md overflow-hidden border border-gray-200 mb-8">
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
                     <thead>
-                        <tr class="bg-gray-50 text-gray-600 text-sm border-b border-gray-200">
-                            <th class="p-4 font-medium w-16">No.</th>
+                        <tr class="bg-gray-50 text-gray-600 text-sm border-b border-gray-200 whitespace-nowrap">
+                            <!-- 순번 대신 신청자명 표시 -->
+                            <th class="p-4 font-medium w-32 bg-yellow-50 text-yellow-800">신청자</th>
                             <th class="p-4 font-medium w-32">상품코드</th>
-                            <th class="p-4 font-medium">상품명</th>
+                            <th class="p-4 font-medium min-w-[200px]">상품명</th>
+                            <!-- 옵션 열 추가 -->
+                            <th class="p-4 font-medium w-48">옵션</th>
                             <th class="p-4 font-medium w-24">수량</th>
                             <th class="p-4 font-medium w-32">단가</th>
                             <th class="p-4 font-medium w-32 text-right">합계</th>
-                            <th class="p-4 font-medium w-20 text-center">관리</th>
+                            <th class="p-4 font-medium w-20 text-center">삭제</th>
                         </tr>
                     </thead>
                     <tbody id="productTableBody" class="text-sm divide-y divide-gray-100">
                         <tr id="emptyState">
-                            <td colspan="7" class="p-8 text-center text-gray-400">
-                                등록된 상품이 없습니다. URL을 입력하여 추가해주세요.
+                            <td colspan="8" class="p-8 text-center text-gray-400">
+                                등록된 상품이 없습니다. 신청자명과 URL을 입력하여 추가해주세요.
                             </td>
                         </tr>
                     </tbody>
                 </table>
             </div>
+            <!-- Total Footer -->
             <div class="bg-gray-50 p-4 border-t border-gray-200 flex justify-end items-center gap-4">
                 <span class="text-gray-600 font-medium">총 합계금액:</span>
                 <span class="text-2xl font-bold text-orange-600" id="grandTotal">0원</span>
@@ -94,24 +111,19 @@
     </div>
 
     <script>
-        let idCounter = 1;
-
         function handleEnter(e) { if (e.key === 'Enter') fetchProductInfo(); }
         function cleanText(text) { return text ? text.replace(/\s+/g, ' ').trim() : ""; }
 
-        // --- 파싱 로직 ---
+        // --- 파싱 로직 (기존 유지) ---
         function parseAlpha(doc, url) {
             let name = "";
             let code = "";
             let price = "0";
 
-            // 1. 상품명 찾기
+            // 1. 상품명
             const pNameEl = doc.querySelector('.top_info .p_name') || doc.querySelector('.p_name');
-            if (pNameEl) {
-                name = cleanText(pNameEl.innerText);
-            } 
+            if (pNameEl) name = cleanText(pNameEl.innerText);
             
-            // Fallback
             if (!name) {
                 const metaTitle = doc.querySelector('meta[property="og:title"]');
                 if (metaTitle) name = metaTitle.content;
@@ -123,17 +135,13 @@
             }
             name = name.split('::')[0].split('-')[0].trim();
 
-            // 2. 가격 찾기 (할인율 태그 제거 로직 포함)
+            // 2. 가격
             const costEl = doc.querySelector('.top_info .cost') || doc.querySelector('.cost');
             if (costEl) {
-                // 할인율(.percent) 태그가 있다면 제거 후 텍스트 추출
                 const percentEl = costEl.querySelector('.percent');
-                if (percentEl) {
-                    percentEl.remove();
-                }
+                if (percentEl) percentEl.remove();
                 price = costEl.innerText;
             } else {
-                // Fallback
                 const inputPrice = doc.querySelector('input[name="productPrice"]') || 
                                    doc.querySelector('input[name="price"]');
                 if (inputPrice) price = inputPrice.value;
@@ -144,11 +152,9 @@
             }
             price = price.replace(/[^0-9]/g, '');
 
-            // 3. 상품코드 찾기
+            // 3. 상품코드
             const idCodeEl = doc.querySelector('#alphanetCodeinput');
-            if (idCodeEl) {
-                code = cleanText(idCodeEl.innerText);
-            }
+            if (idCodeEl) code = cleanText(idCodeEl.innerText);
 
             if (!code) {
                 const inputCode = doc.querySelector('input[name="productCode"]');
@@ -156,7 +162,6 @@
                      code = inputCode.value;
                 }
             }
-
             if (!code) {
                 const ths = doc.querySelectorAll('th');
                 for (let th of ths) {
@@ -173,10 +178,7 @@
                     }
                 }
             }
-
-            if (!code) {
-                code = getParameterByName("productCode", url);
-            }
+            if (!code) code = getParameterByName("productCode", url);
 
             return { name, price, code };
         }
@@ -190,34 +192,43 @@
             return decodeURIComponent(results[2].replace(/\+/g, ' '));
         }
 
+        // --- 메인 로직 ---
         async function fetchProductInfo() {
             const urlInput = document.getElementById('urlInput');
+            const applicantInput = document.getElementById('applicantInput');
+            const optionInput = document.getElementById('optionInput');
+            
             let url = urlInput.value.trim();
+            const applicant = applicantInput.value.trim();
+            const option = optionInput.value.trim();
+            
             const btnSpinner = document.getElementById('btnSpinner');
             const btnText = document.getElementById('btnText');
             const addBtn = document.getElementById('addBtn');
 
-            if (!url) { alert('URL을 입력해주세요.'); return; }
-            if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
-
-            const existingRow = findRowByUrl(url);
-            if (existingRow) {
-                const qtyInput = existingRow.querySelector('.qty-input');
-                qtyInput.value = (parseInt(qtyInput.value) || 0) + 1;
-                existingRow.classList.remove('highlight-row');
-                void existingRow.offsetWidth; 
-                existingRow.classList.add('highlight-row');
-                updateRowAndTotal(qtyInput);
-                urlInput.value = '';
+            // 유효성 검사: 신청자명 필수
+            if (!applicant) {
+                alert('신청자명을 입력해주세요.');
+                applicantInput.focus();
                 return;
             }
 
+            if (!url) { 
+                alert('URL을 입력해주세요.'); 
+                urlInput.focus();
+                return; 
+            }
+            
+            if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+
+            // 중복 체크 로직 제거: 서로 다른 신청자가 같은 상품을 살 수 있으므로 무조건 추가
+
             btnSpinner.classList.remove('hidden');
-            btnText.textContent = '분석 중...';
+            btnText.textContent = '조회 중...';
             addBtn.disabled = true;
 
             try {
-                // 1. AllOrigins (JSON 방식)
+                // 1. AllOrigins
                 let htmlContent = null;
                 try {
                     const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
@@ -225,7 +236,7 @@
                     const data = await response.json();
                     htmlContent = data.contents;
                 } catch (e) {
-                    // 2. CorsProxy (Text 방식)
+                    // 2. CorsProxy
                     console.warn('1차 실패, 2차 시도');
                     const response = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`);
                     if (!response.ok) throw new Error('2차 실패');
@@ -238,7 +249,8 @@
                 const result = parseAlpha(doc, url);
 
                 addProductRow({
-                    id: idCounter++,
+                    applicant: applicant,
+                    option: option,
                     name: result.name || "상품명 수동 입력 필요",
                     code: result.code || "코드 확인 필요",
                     price: result.price || "0",
@@ -246,13 +258,17 @@
                     qty: 1
                 });
 
+                // URL과 옵션은 초기화하지만, 편의를 위해 신청자명은 남겨둠 (연속 입력 가능성)
                 urlInput.value = ''; 
+                optionInput.value = '';
+                urlInput.focus();
 
             } catch (error) {
                 console.error(error);
-                alert('데이터를 읽어오지 못했습니다. 보안 정책 문제일 수 있으니 수동으로 입력해주세요.');
+                alert('데이터를 읽어오지 못했습니다. 수동으로 입력해주세요.');
                 addProductRow({
-                    id: idCounter++,
+                    applicant: applicant,
+                    option: option,
                     name: "",
                     code: "",
                     price: "",
@@ -264,15 +280,6 @@
                 btnText.textContent = '상품 추가';
                 addBtn.disabled = false;
             }
-        }
-
-        function findRowByUrl(url) {
-            const rows = document.querySelectorAll('#productTableBody tr:not(#emptyState)');
-            for (let row of rows) {
-                const rowUrl = row.getAttribute('data-url');
-                if (rowUrl && (rowUrl === url || rowUrl.includes(url) || url.includes(rowUrl))) return row;
-            }
-            return null;
         }
 
         function addProductRow(product) {
@@ -287,14 +294,20 @@
             const lineTotal = parseInt(product.price || 0) * product.qty;
 
             tr.innerHTML = `
-                <td class="p-4 text-gray-500">${product.id}</td>
+                <!-- 순번 대신 신청자명 표시 -->
+                <td class="p-4">
+                    <input type="text" value="${product.applicant}" class="w-full bg-transparent border-b border-transparent focus:border-orange-500 outline-none text-gray-800 font-bold bg-yellow-50 text-center rounded px-1">
+                </td>
                 <td class="p-4"><input type="text" value="${product.code}" class="w-full bg-transparent border-b border-transparent focus:border-orange-500 outline-none text-gray-700"></td>
                 <td class="p-4"><input type="text" value="${product.name}" class="w-full bg-transparent border-b border-transparent focus:border-orange-500 outline-none font-medium text-gray-800"></td>
+                <!-- 옵션 -->
+                <td class="p-4"><input type="text" value="${product.option}" class="w-full bg-transparent border-b border-transparent focus:border-orange-500 outline-none text-blue-600"></td>
+                
                 <td class="p-4"><input type="number" min="1" value="${product.qty}" class="qty-input w-20 px-2 py-1 border border-gray-300 rounded focus:border-orange-500 outline-none" onchange="updateRowAndTotal(this)" oninput="updateRowAndTotal(this)"></td>
                 <td class="p-4"><input type="text" value="${parseInt(product.price || 0).toLocaleString()}" class="price-input w-full bg-transparent border-b border-transparent focus:border-orange-500 outline-none text-right pr-2" onblur="updateRowAndTotal(this, true)"></td>
                 <td class="p-4 text-right font-medium text-gray-700 line-total">${lineTotal.toLocaleString()}</td>
                 <td class="p-4 text-center">
-                    <button onclick="removeRow(this)" class="text-gray-400 hover:text-red-500 transition p-1">
+                    <button onclick="removeRow(this)" class="text-gray-400 hover:text-red-500 transition p-1" title="삭제">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                     </button>
                 </td>
@@ -337,16 +350,15 @@
         function removeRow(btn) {
             btn.closest('tr').remove();
             if (document.querySelectorAll('#productTableBody tr').length === 0) {
-                document.getElementById('productTableBody').innerHTML = `<tr id="emptyState"><td colspan="7" class="p-8 text-center text-gray-400">등록된 상품이 없습니다. URL을 입력하여 추가해주세요.</td></tr>`;
+                document.getElementById('productTableBody').innerHTML = `<tr id="emptyState"><td colspan="8" class="p-8 text-center text-gray-400">등록된 상품이 없습니다. 신청자명과 URL을 입력하여 추가해주세요.</td></tr>`;
             }
             updateCount();
             updateGrandTotal();
         }
 
         function clearList() {
-            if(!confirm('삭제하시겠습니까?')) return;
-            document.getElementById('productTableBody').innerHTML = `<tr id="emptyState"><td colspan="7" class="p-8 text-center text-gray-400">등록된 상품이 없습니다. URL을 입력하여 추가해주세요.</td></tr>`;
-            idCounter = 1;
+            if(!confirm('모든 리스트를 삭제하시겠습니까?')) return;
+            document.getElementById('productTableBody').innerHTML = `<tr id="emptyState"><td colspan="8" class="p-8 text-center text-gray-400">등록된 상품이 없습니다. 신청자명과 URL을 입력하여 추가해주세요.</td></tr>`;
             updateCount();
             updateGrandTotal();
         }
@@ -358,7 +370,7 @@
         function exportToExcel() {
             try {
                 if (typeof XLSX === 'undefined') {
-                    alert('엑셀 라이브러리가 로드되지 않았습니다. 페이지를 새로고침 해주세요.');
+                    alert('엑셀 라이브러리가 로드되지 않았습니다. 새로고침 해주세요.');
                     return;
                 }
 
@@ -368,49 +380,49 @@
                     return; 
                 }
                 
-                const data = [["상품코드", "상품명", "수량", "단가", "합계금액", "상품링크"]];
+                // 엑셀 헤더 업데이트
+                const data = [["신청자", "상품코드", "상품명", "옵션", "수량", "단가", "금액", "상품링크"]];
                 let total = 0;
 
                 rows.forEach(row => {
-                    const codeInput = row.querySelector('td:nth-child(2) input');
-                    const nameInput = row.querySelector('td:nth-child(3) input');
-                    const qtyInput = row.querySelector('.qty-input');
-                    const priceInput = row.querySelector('.price-input');
-
-                    const code = codeInput ? codeInput.value : '';
-                    const name = nameInput ? nameInput.value : '';
-                    const qty = qtyInput ? (parseInt(qtyInput.value) || 0) : 0;
-                    const priceRaw = priceInput ? priceInput.value.replace(/,/g, '') : '0';
-                    const price = parseInt(priceRaw) || 0;
+                    const inputs = row.querySelectorAll('input');
+                    // 인덱스 주의: 0:신청자, 1:코드, 2:이름, 3:옵션, 4:수량, 5:단가
+                    const applicant = inputs[0].value;
+                    const code = inputs[1].value;
+                    const name = inputs[2].value;
+                    const option = inputs[3].value;
+                    const qty = parseInt(inputs[4].value) || 0;
+                    const price = parseInt(inputs[5].value.replace(/,/g, '')) || 0;
                     
                     const sum = price * qty;
                     total += sum;
                     
                     const link = row.getAttribute('data-url') || "";
                     
-                    data.push([code, name, qty, price, sum, link]);
+                    data.push([applicant, code, name, option, qty, price, sum, link]);
                 });
                 
-                data.push(["", "총 합계", "", "", total, ""]);
+                data.push(["", "", "총 합계", "", "", "", total, ""]);
 
                 const wb = XLSX.utils.book_new();
                 const ws = XLSX.utils.aoa_to_sheet(data);
                 
-                // 열 너비 설정
                 ws['!cols'] = [
+                    { wch: 15 }, // 신청자
                     { wch: 15 }, // 코드
                     { wch: 40 }, // 상품명
-                    { wch: 10 }, // 수량
-                    { wch: 15 }, // 단가
+                    { wch: 20 }, // 옵션
+                    { wch: 8 },  // 수량
+                    { wch: 12 }, // 단가
                     { wch: 15 }, // 합계
                     { wch: 50 }  // 링크
                 ];
                 
-                XLSX.utils.book_append_sheet(wb, ws, "견적서");
+                XLSX.utils.book_append_sheet(wb, ws, "공동구매리스트");
                 
                 const now = new Date();
                 const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
-                XLSX.writeFile(wb, `알파문구_견적서_${dateStr}.xlsx`);
+                XLSX.writeFile(wb, `알파문구_공구리스트_${dateStr}.xlsx`);
             } catch (error) {
                 console.error('Excel Export Error:', error);
                 alert('엑셀 파일 생성 중 오류가 발생했습니다: ' + error.message);
