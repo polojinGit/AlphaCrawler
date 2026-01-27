@@ -27,7 +27,7 @@
             <h1 class="text-3xl font-bold text-gray-800 mb-2">
                 <span class="text-orange-600">α</span> 알파문구 공동구매 수집기 (공유 버전)
             </h1>
-            <p class="text-gray-600">여러 사람이 함께 보는 페이지입니다. 입력하면 <strong>실시간으로 공유</strong>됩니다.</p>
+            <p class="text-gray-600">입력한 내용은 <strong>자동으로 공유</strong>됩니다. (상품 추가 및 수량 변경 시 저장)</p>
         </header>
 
         <!-- Input Section -->
@@ -58,7 +58,7 @@
                     <div id="btnSpinner" class="loading-spinner hidden"></div>
                 </button>
             </div>
-            <p class="text-xs text-gray-400 mt-2">* 신청자명을 입력하지 않으면 추가되지 않습니다. 데이터는 클라우드에 자동 저장됩니다.</p>
+            <p class="text-xs text-gray-400 mt-2">* 신청자명은 필수입니다. 상품 추가 시에만 데이터베이스에 저장됩니다.</p>
         </div>
 
         <!-- Action Bar -->
@@ -140,6 +140,9 @@
             currentUser = user;
             if (user) {
                 setupRealtimeListener(user);
+            } else {
+                // 로그아웃 혹은 인증 실패 시 처리
+                console.log("Waiting for auth...");
             }
         });
 
@@ -195,17 +198,17 @@
                 // Calculate Line Total
                 const lineTotal = parseInt(item.price || 0) * parseInt(item.qty || 0);
 
-                // Note: using 'onchange' instead of 'oninput' to save to DB only when finished editing
+                // 저장 로직 변경: 오직 수량(qty) 변경 시에만 updateItem 호출
                 tr.innerHTML = `
                     <td class="p-4">
-                        <input type="text" value="${item.applicant}" onchange="window.updateItem('${item.id}', 'applicant', this.value)" class="w-full bg-transparent border-b border-transparent focus:border-orange-500 outline-none text-gray-800 font-bold bg-yellow-50 text-center rounded px-1">
+                        <input type="text" value="${item.applicant}" class="w-full bg-transparent border-b border-transparent focus:border-orange-500 outline-none text-gray-800 font-bold bg-yellow-50 text-center rounded px-1">
                     </td>
-                    <td class="p-4"><input type="text" value="${item.code}" onchange="window.updateItem('${item.id}', 'code', this.value)" class="w-full bg-transparent border-b border-transparent focus:border-orange-500 outline-none text-gray-700"></td>
-                    <td class="p-4"><input type="text" value="${item.name}" onchange="window.updateItem('${item.id}', 'name', this.value)" class="w-full bg-transparent border-b border-transparent focus:border-orange-500 outline-none font-medium text-gray-800"></td>
-                    <td class="p-4"><input type="text" value="${item.option}" onchange="window.updateItem('${item.id}', 'option', this.value)" class="w-full bg-transparent border-b border-transparent focus:border-orange-500 outline-none text-blue-600"></td>
+                    <td class="p-4"><input type="text" value="${item.code}" class="w-full bg-transparent border-b border-transparent focus:border-orange-500 outline-none text-gray-700"></td>
+                    <td class="p-4"><input type="text" value="${item.name}" class="w-full bg-transparent border-b border-transparent focus:border-orange-500 outline-none font-medium text-gray-800"></td>
+                    <td class="p-4"><input type="text" value="${item.option}" class="w-full bg-transparent border-b border-transparent focus:border-orange-500 outline-none text-blue-600"></td>
                     
                     <td class="p-4"><input type="number" min="1" value="${item.qty}" class="qty-input w-20 px-2 py-1 border border-gray-300 rounded focus:border-orange-500 outline-none" onchange="window.updateItem('${item.id}', 'qty', this.value)"></td>
-                    <td class="p-4"><input type="text" value="${parseInt(item.price || 0).toLocaleString()}" class="price-input w-full bg-transparent border-b border-transparent focus:border-orange-500 outline-none text-right pr-2" onchange="window.updateItem('${item.id}', 'price', this.value)"></td>
+                    <td class="p-4"><input type="text" value="${parseInt(item.price || 0).toLocaleString()}" class="price-input w-full bg-transparent border-b border-transparent focus:border-orange-500 outline-none text-right pr-2"></td>
                     <td class="p-4 text-right font-medium text-gray-700 line-total">${lineTotal.toLocaleString()}</td>
                     
                     <!-- Hidden URL for Export -->
@@ -238,7 +241,11 @@
         
         // 1. Add Item
         window.fetchProductInfo = async function() {
-            if (!currentUser) return;
+            // 로그인 상태 체크 강화
+            if (!currentUser) {
+                alert("서버 연결 중입니다. 잠시 후 다시 시도해주세요.");
+                return;
+            }
 
             const urlInput = document.getElementById('urlInput');
             const applicantInput = document.getElementById('applicantInput');
@@ -331,7 +338,7 @@
             }
         };
 
-        // 2. Update Item
+        // 2. Update Item (Qty only mostly)
         window.updateItem = async function(docId, field, value) {
             if (!currentUser) return;
             const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'alpha_cart_items', docId);
