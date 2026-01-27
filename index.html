@@ -94,7 +94,7 @@
                     <tbody id="productTableBody" class="text-sm divide-y divide-gray-100">
                         <tr id="emptyState">
                             <td colspan="8" class="p-8 text-center text-gray-400">
-                                데이터 로딩 중...
+                                데이터 로딩 중... (설정이 완료되지 않았거나 로딩 중입니다)
                             </td>
                         </tr>
                     </tbody>
@@ -114,9 +114,36 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, addDoc, deleteDoc, updateDoc, onSnapshot, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- Firebase Configuration ---
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app';
+        // =================================================================================
+        // [중요] Github 배포 시 아래 firebaseConfig 값을 본인의 Firebase 프로젝트 값으로 채워넣으세요.
+        // 1. https://console.firebase.google.com/ 접속 -> 프로젝트 생성
+        // 2. 앱 추가(웹/Web) -> SDK 설정 및 구성 복사
+        // 3. 아래 객체 내용을 덮어쓰세요.
+        // =================================================================================
+        
+        let firebaseConfig = {
+          apiKey: "AIzaSyAqf9h1kgRCjjzGzgiGgo2Q6FQEZ28zdjc",
+          authDomain: "alphacrawler-51ef3.firebaseapp.com",
+          projectId: "alphacrawler-51ef3",
+          storageBucket: "alphacrawler-51ef3.firebasestorage.app",
+          messagingSenderId: "854370361421",
+          appId: "1:854370361421:web:7e966adb11ddc4304ffc04",
+          measurementId: "G-V4GVSCQ2MF"
+
+        };
+
+        // 미리보기 환경용 자동 설정 (Github에 올릴 땐 무시됨)
+        if (typeof __firebase_config !== 'undefined') {
+            firebaseConfig = JSON.parse(__firebase_config);
+        } else {
+            // Github 등 외부 환경에서 설정값이 비어있으면 알림
+            if (!firebaseConfig.apiKey) {
+                alert("Firebase 설정이 비어있습니다. 소스 코드의 firebaseConfig 부분을 채워주세요.");
+            }
+        }
+
+        // 데이터베이스 저장 경로 (변경 가능)
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'alpha-tool-v1';
         
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
@@ -147,6 +174,8 @@
 
         // --- Firestore Realtime Listener ---
         function setupRealtimeListener(user) {
+            // Strict Path Rule: /artifacts/{appId}/public/data/{collectionName}
+            // 외부 배포 시에는 사실 이 경로 규칙이 필수는 아니지만, 코드 호환성을 위해 유지합니다.
             const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'alpha_cart_items');
 
             unsubscribeSnapshot = onSnapshot(colRef, (snapshot) => {
@@ -161,6 +190,9 @@
                 renderTable(items);
             }, (error) => {
                 console.error("Data sync error:", error);
+                if (error.code === 'permission-denied') {
+                    alert("데이터 접근 권한이 없습니다. Firebase Console -> Firestore Database -> 규칙(Rules)에서 읽기/쓰기를 허용해주세요.");
+                }
             });
         }
 
